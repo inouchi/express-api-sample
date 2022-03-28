@@ -1,50 +1,66 @@
 import { RequestHandler } from "express";
 import { Todo } from "../models/todo";
+import MySQLClient from "../lib/mysql/client";
+import mysql from "mysql";
 
-const TODOS: Todo[] = [];
+export const createTodo: RequestHandler = async (req, res, next) => {
+  const { id, text } = req.body as { id: number; text: string };
 
-export const createTodo: RequestHandler = (req, res) => {
-  const text = (req.body as { text: string }).text;
-  const newTodo = new Todo(Math.random().toString(), text);
+  try {
+    const sql = mysql.format("INSERT INTO todos VALUES(?, ?)", [id, text]);
+    await MySQLClient.query(sql);
+  } catch (err) {
+    next(err);
+  }
 
-  TODOS.push(newTodo);
-
-  res
-    .status(201)
-    .json({ message: "Todo was successfully created.", createdTodo: newTodo });
+  res.status(201).json({ message: "Todo was successfully created." });
 };
 
-export const getTodos: RequestHandler = (req, res) => {
-  res.json({ message: "Todos were successfully obtained.", todos: TODOS });
+export const getTodos: RequestHandler = async (req, res, next) => {
+  let todos: Todo[] = [];
+  try {
+    todos = (await MySQLClient.query("SELECT * FROM todos")) as Todo[];
+  } catch (err) {
+    next(err);
+  }
+
+  res.json({ message: "Todos were successfully obtained.", todos: todos });
 };
 
-export const updateTodo: RequestHandler<{ id: string }> = (req, res) => {
-  const todoId = req.params.id;
+export const updateTodo: RequestHandler<{ id: number }> = async (
+  req,
+  res,
+  next
+) => {
+  const targetId = req.params.id;
   const updateText = (req.body as { text: string }).text;
 
-  const todoIndex = TODOS.findIndex((todo) => todo.id === todoId);
-
-  if (todoIndex < 0) {
-    throw new Error("Target todo not found.");
+  try {
+    const sql = mysql.format("UPDATE todos SET text = ? WHERE id = ?", [
+      updateText,
+      targetId,
+    ]);
+    await MySQLClient.query(sql);
+  } catch (err) {
+    next(err);
   }
 
-  TODOS[todoIndex] = new Todo(todoId, updateText);
-
-  res.json({
-    message: "Target task was successfully updated.",
-    updateTodo: TODOS[todoIndex],
-  });
+  res.json({ message: "Target task was successfully updated." });
 };
 
-export const deleteTodo: RequestHandler<{ id: string }> = (req, res) => {
-  const todoId = req.params.id;
-  const todoIndex = TODOS.findIndex((todo) => todo.id === todoId);
+export const deleteTodo: RequestHandler<{ id: number }> = async (
+  req,
+  res,
+  next
+) => {
+  const targetId = req.params.id;
 
-  if (todoIndex < 0) {
-    throw new Error("Target todo not found.");
+  try {
+    const sql = mysql.format("DELETE FROM todos WHERE id = ?", [targetId]);
+    await MySQLClient.query(sql);
+  } catch (err) {
+    next(err);
   }
-
-  TODOS.splice(todoIndex, 1);
 
   res.json({ message: "Target task was successfully deleted." });
 };
