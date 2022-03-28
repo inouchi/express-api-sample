@@ -2,6 +2,7 @@ import { RequestHandler } from "express";
 import { Todo } from "../models/todo";
 import MySQLClient from "../lib/mysql/client";
 import mysql from "mysql";
+import Transaction from "../lib/mysql/transaction";
 
 export const createTodo: RequestHandler = async (req, res, next) => {
   const { id, text } = req.body as { id: number; text: string };
@@ -35,13 +36,17 @@ export const updateTodo: RequestHandler<{ id: number }> = async (
   const targetId = req.params.id;
   const updateText = (req.body as { text: string }).text;
 
+  let transaction!: Transaction;
   try {
+    transaction = await MySQLClient.beginTransaction();
     const sql = mysql.format("UPDATE todos SET text = ? WHERE id = ?", [
       updateText,
       targetId,
     ]);
-    await MySQLClient.query(sql);
+    await transaction.query(sql);
+    await transaction.commit();
   } catch (err) {
+    await transaction.rollback();
     next(err);
   }
 
