@@ -1,19 +1,8 @@
-import mysql from "mysql";
-import { promisify } from "util";
-import config from "../../config/mysql";
-
-const connection = mysql.createConnection({
-  host: config.HOST,
-  port: config.PORT,
-  user: config.USER,
-  password: config.PASSWORD,
-  database: config.DATABASE,
-});
+import { QueryOptions } from "mysql";
+import pool from "./pool";
 
 const MySQLClient = {
-  connect: promisify(connection.connect).bind(connection),
-  query: promisify(connection.query).bind(connection),
-  end: promisify(connection.end).bind(connection),
+  query: async (query: string | QueryOptions) => await pool.query(query),
 };
 
 export default MySQLClient;
